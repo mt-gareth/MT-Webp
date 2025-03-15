@@ -111,7 +111,7 @@ export default {
       selectedPreset: null,
       customWidth: null,
       customHeight: null,
-      quality: 80,         // default 80%
+      quality: 100,
       processing: false,
       processedCount: 0,
       downloadUrl: null,
