@@ -1,87 +1,92 @@
 <template>
-  <div class="max-w-xl mx-auto p-4 flex justify-center items-center h-[100vh] flex-row">
-    <!-- Drag-and-drop zone -->
-    <label class="flex border-2 border-dashed border-gray-300 rounded p-6 text-center justify-center align-center" 
-         :class="{ 'border-blue-500 bg-blue-50': isDragging }"
-         @dragover.prevent="onDragOver" 
-         @dragleave.prevent="onDragLeave" 
-         @drop.prevent="onDrop">
-      <p class="text-gray-500">
+  <div class="max-w-5xl mx-auto p-8 bg-gray-900 text-gray-200 min-h-screen flex flex-col items-center">
+
+    <!-- Drag-and-drop area -->
+    <div class="border-2 border-dashed border-gray-600 rounded-xl p-10 text-center cursor-pointer w-full"
+           :class="{ 'border-blue-400 bg-gray-800': isDragging }"
+           @dragover.prevent="onDragOver" 
+           @dragleave.prevent="onDragLeave" 
+           @drop.prevent="onDrop"
+           @click="$refs.fileInput.click()">
+      <p class="text-gray-400">
         <span v-if="!isDragging">Drag & drop images here, or click to select files</span>
-        <span v-else>Release to drop the files</span>
+        <span v-else class="text-blue-400">Release to drop the files</span>
       </p>
-      <input 
-        type="file" multiple accept="image/*" 
-        class="hidden" ref="fileInput" 
-        @change="onFileChange" 
-      />
-    </label>
-    
-    <!-- File list preview -->
-    <div v-if="files.length" class="mt-4 space-y-2">
-      <div v-for="(fileObj, index) in files" :key="fileObj.id" class="flex items-center justify-between p-2 bg-gray-100 rounded">
-        <div class="flex items-center space-x-4">
-          <!-- Thumbnail preview -->
-          <img :src="fileObj.preview" alt="" class="w-16 h-16 object-cover rounded"/>
-          <!-- File name and size -->
-          <div>
-            <p class="font-medium">{{ fileObj.file.name }}</p>
-            <p class="text-sm text-gray-600">{{ formatSize(fileObj.file.size) }}</p>
-          </div>
+      <input type="file" multiple accept="image/*" class="hidden" ref="fileInput" @change="onFileChange" />
+    </div>
+
+    <!-- File preview cards -->
+    <div v-if="files.length" class="mt-8 grid grid-cols-4 gap-4 w-full">
+      <div v-for="(fileObj, index) in files" :key="fileObj.id" class="bg-gray-800 rounded shadow overflow-hidden">
+        <img :src="fileObj.preview" class="object-cover w-full h-32 rounded-t" />
+        <div class="p-2 text-sm">
+          <p class="truncate">{{ fileObj.file.name }}</p>
+          <p class="text-xs text-gray-500">{{ formatSize(fileObj.file.size) }}</p>
+          <button @click="removeFile(index)" class="text-red-400 hover:text-red-600 text-xs mt-1">Remove</button>
         </div>
-        <!-- Remove file button -->
-        <button @click="removeFile(index)" class="text-red-500 hover:text-red-700">&times;</button>
       </div>
     </div>
 
-    <!-- Conversion options -->
-    <div v-if="files.length" class="mt-6 p-4 border rounded">
-      <h3 class="font-semibold mb-2">Output Settings:</h3>
-      <!-- Preset sizes dropdown -->
-      <label class="block mb-2">Preset Size:
-        <select v-model="selectedPreset" @change="onPresetChange" class="ml-2 p-1 border rounded">
-          <option value="">Custom</option>
-          <option v-for="preset in presets" :key="preset.label" :value="preset">
-            {{ preset.label }} ({{ preset.width }}x{{ preset.height }})
-          </option>
-        </select>
-      </label>
-      <!-- Custom dimensions inputs -->
-      <div class="mb-2">
-        <label class="mr-2">Width: 
-          <input type="number" v-model.number="customWidth" class="w-24 p-1 border rounded" :disabled="selectedPreset"/>
+    <!-- Output settings -->
+    <div v-if="files.length" class="mt-8 p-4 border border-gray-700 rounded bg-gray-800 w-full">
+      <h3 class="font-semibold mb-4">Output Settings:</h3>
+
+      <!-- Preset size -->
+      <div class="mb-4">
+        <label>Preset Size:
+          <select v-model="selectedPreset" @change="onPresetChange" class="ml-2 bg-gray-700 border-gray-600 rounded p-1">
+            <option value="">Custom</option>
+            <option v-for="preset in presets" :key="preset.label" :value="preset">
+              {{ preset.label }} ({{ preset.width }}×{{ preset.height }})
+            </option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Custom dimensions -->
+      <div class="mb-4">
+        <label class="mr-4">Width: 
+          <input type="number" v-model.number="customWidth" class="w-28 bg-gray-700 border-gray-600 rounded p-1" :disabled="selectedPreset"/>
         </label>
         <label>Height: 
-          <input type="number" v-model.number="customHeight" class="w-24 p-1 border rounded" :disabled="selectedPreset"/>
+          <input type="number" v-model.number="customHeight" class="w-28 bg-gray-700 border-gray-600 rounded p-1" :disabled="selectedPreset"/>
         </label>
       </div>
+
       <!-- Quality slider -->
-      <label class="block mb-4">Quality: {{ quality }}%
-        <input type="range" v-model.number="quality" min="1" max="100" class="w-full">
-      </label>
-      <!-- Convert button -->
-      <button @click="processImages" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" :disabled="processing">
+      <div class="mb-6">
+        <label>Quality: {{ quality }}%
+          <input type="range" v-model.number="quality" min="1" max="100" class="w-full">
+        </label>
+      </div>
+
+      <!-- Convert Button -->
+      <button @click="processImages" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded" :disabled="processing">
         Convert Images
       </button>
-    </div>
 
-    <!-- Progress indicator -->
-    <div v-if="processing" class="mt-4">
-      <p class="mb-2">Processing images... {{ processedCount }} / {{ files.length }}</p>
-      <div class="w-full bg-gray-300 rounded h-2">
-        <div class="bg-green-500 h-2 rounded" :style="{ width: progressPercent + '%' }"></div>
+      <!-- Progress bar -->
+      <div v-if="processing" class="mt-4">
+        <p class="mb-2">Processing images... {{ processedCount }} / {{ files.length }}</p>
+        <div class="w-full bg-gray-700 rounded h-2">
+          <div class="bg-green-500 h-2 rounded" :style="{ width: progressPercent + '%' }"></div>
+        </div>
       </div>
+
+      <!-- Download link -->
+      <div v-if="downloadUrl" class="mt-4">
+        <a :href="downloadUrl" :download="zipName" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white">
+          Download ZIP
+        </a>
+      </div>
+
+      <!-- Error message -->
+      <p v-if="error" class="mt-2 text-red-500">{{ error }}</p>
+
     </div>
 
-    <!-- Download link (after processing) -->
-    <div v-if="downloadUrl" class="mt-4">
-      <a :href="downloadUrl" :download="zipName" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-        Download All Images (ZIP)
-      </a>
-    </div>
+    <input type="file" multiple accept="image/*" class="hidden" ref="fileInput" @change="onFileChange">
 
-    <!-- Error message -->
-    <p v-if="error" class="mt-2 text-red-600">{{ error }}</p>
   </div>
 </template>
 
